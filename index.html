@@ -1,0 +1,160 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>OpenStudio → glTF viewer (v3-shadows)</title>
+  <style>html,body{margin:0;height:100%}canvas{display:block}</style>
+
+  <!-- Import-map so bare specifiers resolve -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three":         "https://unpkg.com/three@0.162.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+<script type="module">
+  /* ────────────────────────────────────────────
+   * Imports
+   * ─────────────────────────────────────────── */
+  import * as THREE           from 'three';
+  import { OrbitControls }    from 'three/addons/controls/OrbitControls.js';
+  import { GLTFLoader }       from 'three/addons/loaders/GLTFLoader.js';
+
+  /* ────────────────────────────────────────────
+   * Renderer
+   * ─────────────────────────────────────────── */
+  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.outputColorSpace        = THREE.SRGBColorSpace;
+  renderer.toneMapping             = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure     = 1.2;
+  renderer.physicallyCorrectLights = true;
+  renderer.shadowMap.enabled       = true;
+  renderer.shadowMap.type          = THREE.PCFSoftShadowMap;
+  document.body.appendChild(renderer.domElement);
+
+  /* ────────────────────────────────────────────
+   * Scene / camera / controls
+   * ─────────────────────────────────────────── */
+  const scene    = new THREE.Scene();
+  scene.background = new THREE.Color(0xe0e0e0);
+
+  const camera   = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.01, 10000);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  /* ────────────────────────────────────────────
+   * 3-point studio lights  → return the key
+   * ─────────────────────────────────────────── */
+  function addStudioLights() {
+    const key = new THREE.DirectionalLight(0xffffff, 2);
+    key.position.set(5,10,5);
+    key.castShadow = true;
+    key.shadow.mapSize.set(4096,4096);   // sharper
+    key.shadow.bias = -0.0005;           // fight acne
+    scene.add(key);
+
+    const fill = new THREE.DirectionalLight(0xffffff, 0.6);
+    fill.position.set(-8,6,-4);
+    scene.add(fill);
+
+    const rim  = new THREE.DirectionalLight(0xffffff, 1);
+    rim.position.set(0,10,-10);
+    scene.add(rim);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+
+    return key;  // so caller can resize its shadow camera
+  }
+  const keyLight = addStudioLights();
+
+  /* ────────────────────────────────────────────
+   * Load GLB
+   * ─────────────────────────────────────────── */
+  new GLTFLoader().load('model.glb', gltf => {
+    const model = gltf.scene;
+    scene.add(model);
+
+    /* cast / receive shadows + perimeter-only edges */
+    model.traverse(obj => {
+      if (obj.isMesh) {
+        obj.castShadow    = true;
+        obj.receiveShadow = true;
+
+        const edgeGeo = new THREE.EdgesGeometry(obj.geometry, 1);      // 1° → ignore coplanar tris
+        const edgeMat = new THREE.LineBasicMaterial({color:0x000000, opacity:0.35, transparent:true});
+        obj.add(new THREE.LineSegments(edgeGeo, edgeMat));
+
+        obj.material.polygonOffset = true;
+        obj.material.polygonOffsetFactor = 1;
+        obj.material.polygonOffsetUnits  = 1;
+      }
+    });
+
+    /* frame camera on model */
+    const box    = new THREE.Box3().setFromObject(model);
+    const size   = box.getSize(new THREE.Vector3()).length();
+    const center = box.getCenter(new THREE.Vector3());
+    controls.target.copy(center);
+
+    camera.near = size/100;
+    camera.far  = size*10;
+    camera.position.copy(center).add(new THREE.Vector3(0, size*0.1, size*1.5));
+    camera.updateProjectionMatrix();
+    controls.update();
+
+    /* ──────────────────────────────────────────
+     * Resize & centre the key-light’s shadow cam
+     * ───────────────────────────────────────── */
+    const sc     = keyLight.shadow.camera;
+    const extent = size * 0.6;          // half-width/height of square frustum
+    sc.left   = -extent;
+    sc.right  =  extent;
+    sc.top    =  extent;
+    sc.bottom = -extent;
+    sc.near   = 0.1;
+    sc.far    = size * 4;
+    keyLight.position.set(center.x + 5, center.y + 10, center.z + 5); // follow model
+    sc.updateProjectionMatrix();
+
+    /* uncomment to visualise the shadow frustum */
+    // scene.add(new THREE.CameraHelper(sc));
+
+    /* ──────────────────────────────────────────
+     * Ground plane for shadows
+     * ───────────────────────────────────────── */
+    const groundSize = 400;                                        // change if you like
+    const groundGeo  = new THREE.PlaneGeometry(groundSize, groundSize);
+    const groundMat  = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.9});
+    const ground     = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI/2;
+    ground.position.set(center.x, box.min.y - 0.01, center.z);
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    animate();
+  }, undefined, err => console.error(err));
+
+  /* ────────────────────────────────────────────
+   * Render loop
+   * ─────────────────────────────────────────── */
+  function animate(){
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  /* ────────────────────────────────────────────
+   * Resize handler
+   * ─────────────────────────────────────────── */
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+</script>
+</body></html>
