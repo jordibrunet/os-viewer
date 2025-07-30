@@ -1,10 +1,32 @@
 <!DOCTYPE html><html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>OpenStudio → glTF viewer (v3-shadows)</title>
-  <style>html,body{margin:0;height:100%}canvas{display:block}</style>
+  <title>OpenStudio → glTF viewer (v8-h)</title>
 
-  <!-- Import-map so bare specifiers resolve -->
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;700&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;height:100%}
+    body{font-family:"Open Sans",sans-serif;font-weight:300}
+    canvas{display:block}
+
+    #shadowBtn{position:fixed;left:12px;bottom:12px;z-index:12;padding:6px 12px;border:none;border-radius:6px;background:#555;color:#fff;font-size:14px;cursor:pointer}
+    #thicknessControl{position:fixed;left:12px;bottom:60px;z-index:12;background:#ffffffcc;border-radius:6px;padding:8px 12px;font-size:13px;box-shadow:0 2px 6px #0003}
+    #info{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:#ffffffe8;border-radius:6px;padding:4px 10px;font-size:14px;box-shadow:0 2px 6px #0003;z-index:12;display:none}
+
+    #storyPanel,#shadePanel{position:fixed;left:12px;max-width:220px;max-height:40vh;overflow-y:auto;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.4;box-shadow:0 2px 6px #0003}
+    #storyPanel{top:12px;z-index:10}
+    #shadePanel{top:calc(12px + 45vh);z-index:9}
+
+    #legend{position:fixed;top:12px;right:12px;max-width:260px;max-height:90vh;overflow-y:auto;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.4;box-shadow:0 2px 6px #0003;z-index:11}
+
+    h3{margin:0 0 6px;font-weight:700;font-size:14px}
+    .swatch{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:middle}
+    .item{display:flex;align-items:center;margin-bottom:4px}
+    .item input{margin-right:6px}
+    .thickness-control{display:flex;align-items:center;gap:8px}
+    .thickness-control input[type="range"]{width:100px}
+  </style>
+
   <script type="importmap">
   {
     "imports": {
@@ -15,146 +37,272 @@
   </script>
 </head>
 <body>
+<button id="shadowBtn">Shadows: ON</button>
+<div id="thicknessControl">
+  <div class="thickness-control">
+    <label>Selection Thickness:</label>
+    <input type="range" id="thicknessSlider" min="1" max="10" value="3" step="0.5">
+    <span id="thicknessValue">3</span>
+  </div>
+</div>
+<div id="info"></div>
+<div id="storyPanel"><h3>Stories</h3></div>
+<div id="shadePanel"><h3>Shading</h3></div>
+<div id="legend"><h3>Constructions</h3></div>
+
 <script type="module">
-  /* ────────────────────────────────────────────
-   * Imports
-   * ─────────────────────────────────────────── */
-  import * as THREE           from 'three';
-  import { OrbitControls }    from 'three/addons/controls/OrbitControls.js';
-  import { GLTFLoader }       from 'three/addons/loaders/GLTFLoader.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader    } from 'three/addons/loaders/GLTFLoader.js';
 
-  /* ────────────────────────────────────────────
-   * Renderer
-   * ─────────────────────────────────────────── */
-  const renderer = new THREE.WebGLRenderer({ antialias:true });
-  renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-  renderer.outputColorSpace        = THREE.SRGBColorSpace;
-  renderer.toneMapping             = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure     = 1.2;
-  renderer.physicallyCorrectLights = true;
-  renderer.shadowMap.enabled       = true;
-  renderer.shadowMap.type          = THREE.PCFSoftShadowMap;
-  document.body.appendChild(renderer.domElement);
+/* ───────────────── renderer ───────────────── */
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping      = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.physicallyCorrectLights = true;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
 
-  /* ────────────────────────────────────────────
-   * Scene / camera / controls
-   * ─────────────────────────────────────────── */
-  const scene    = new THREE.Scene();
-  scene.background = new THREE.Color(0xe0e0e0);
+/* ───────────────── scene / camera / controls ──────── */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xe0e0e0);
+const camera  = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.01,10000);
+const controls= new OrbitControls(camera,renderer.domElement);
+controls.enableDamping = true;
 
-  const camera   = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.01, 10000);
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
+/* ───────────────── lights ─────────────────────────── */
+function studioLights(){
+  const key = new THREE.DirectionalLight(0xffffff,1.3);
+  key.position.set(5,10,5); key.castShadow=true;
+  key.shadow.mapSize.set(4096,4096); key.shadow.bias=-0.0005;
 
-  /* ────────────────────────────────────────────
-   * 3-point studio lights  → return the key
-   * ─────────────────────────────────────────── */
-  function addStudioLights() {
-    const key = new THREE.DirectionalLight(0xffffff, 2);
-    key.position.set(5,10,5);
-    key.castShadow = true;
-    key.shadow.mapSize.set(4096,4096);   // sharper
-    key.shadow.bias = -0.0005;           // fight acne
-    scene.add(key);
+  const fill=new THREE.DirectionalLight(0xffffff,0.7);
+  fill.position.set(-8,6,-4);
 
-    const fill = new THREE.DirectionalLight(0xffffff, 0.6);
-    fill.position.set(-8,6,-4);
-    scene.add(fill);
+  const rim =new THREE.DirectionalLight(0xffffff,0.5);
+  rim.position.set(0,10,-10);
 
-    const rim  = new THREE.DirectionalLight(0xffffff, 1);
-    rim.position.set(0,10,-10);
-    scene.add(rim);
+  const amb =new THREE.AmbientLight(0xffffff,0.55);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+  scene.add(key,fill,rim,amb);
+  return {key,fill,rim,amb};
+}
+const L = studioLights();
 
-    return key;  // so caller can resize its shadow camera
+/* ───────────────── helpers ────────────────────────── */
+let hue=0; const nextColour=()=>new THREE.Color().setHSL((hue+=47)%360/360,0.55,0.5);
+function storyName(obj){
+  if(obj.userData?.buildingStoryName) return obj.userData.buildingStoryName;
+  for(let n=obj;n;n=n.parent){
+    const nm=n.name||''; if(nm.startsWith('BuildingStory:')) return nm.split(':').slice(1).join(':').trim();
   }
-  const keyLight = addStudioLights();
+  return 'Unknown';
+}
+const isShade=o=>o.userData?.shadingName||(o.name||'').startsWith('ShadingSurface');
 
-  /* ────────────────────────────────────────────
-   * Load GLB
-   * ─────────────────────────────────────────── */
-  new GLTFLoader().load('model.glb', gltf => {
-    const model = gltf.scene;
-    scene.add(model);
+/* ───────────────── data & UI refs ─────────────────── */
+const palette={},stories={},shades=[];
+const info=document.getElementById('info');
+const storyDiv=document.getElementById('storyPanel');
+const shadeDiv=document.getElementById('shadePanel');
+const legend  =document.getElementById('legend');
 
-    /* cast / receive shadows + perimeter-only edges */
-    model.traverse(obj => {
-      if (obj.isMesh) {
-        obj.castShadow    = true;
-        obj.receiveShadow = true;
+/* ───────────────── thickness control ─────────────── */
+const thicknessSlider = document.getElementById('thicknessSlider');
+const thicknessValue = document.getElementById('thicknessValue');
+let selectionThickness = parseFloat(thicknessSlider.value);
 
-        const edgeGeo = new THREE.EdgesGeometry(obj.geometry, 1);      // 1° → ignore coplanar tris
-        const edgeMat = new THREE.LineBasicMaterial({color:0x000000, opacity:0.35, transparent:true});
-        obj.add(new THREE.LineSegments(edgeGeo, edgeMat));
+thicknessSlider.addEventListener('input', (e) => {
+  selectionThickness = parseFloat(e.target.value);
+  thicknessValue.textContent = selectionThickness;
+  
+  // Update existing outline if present
+  if (outline && outlineHost) {
+    updateOutlineThickness();
+  }
+});
 
-        obj.material.polygonOffset = true;
-        obj.material.polygonOffsetFactor = 1;
-        obj.material.polygonOffsetUnits  = 1;
-      }
+/* ───────────────── picking vars ─────────────────── */
+const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
+let outline=null, outlineHost=null;
+
+/* ───────────────── outline creation with thickness ─────────── */
+function createThickOutline(mesh, thickness) {
+  // Create multiple concentric outlines for thickness effect
+  const outlineGroup = new THREE.Group();
+  
+  // Calculate a small offset based on mesh size
+  const bbox = new THREE.Box3().setFromObject(mesh);
+  const size = bbox.getSize(new THREE.Vector3()).length();
+  const baseOffset = size * 0.0001; // Very small base offset
+  
+  // Create multiple outline layers for thickness effect
+  const layers = Math.max(1, Math.floor(thickness));
+  
+  for (let i = 0; i < layers; i++) {
+    const offset = baseOffset * (i + 1) * (thickness / layers);
+    
+    const wireframeGeometry = new THREE.EdgesGeometry(mesh.geometry, 1);
+    const wireframeMaterial = new THREE.LineBasicMaterial({
+      color: 0xff0000,
+      transparent: true,
+      opacity: 0.8 - (i * 0.1), // Fade outer layers slightly
+      depthTest: false,
+      depthWrite: false
     });
+    
+    const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+    wireframe.renderOrder = 100000 - i;
+    wireframe.scale.setScalar(1 + offset);
+    
+    outlineGroup.add(wireframe);
+  }
+  
+  return outlineGroup;
+}
 
-    /* frame camera on model */
-    const box    = new THREE.Box3().setFromObject(model);
-    const size   = box.getSize(new THREE.Vector3()).length();
-    const center = box.getCenter(new THREE.Vector3());
-    controls.target.copy(center);
+function updateOutlineThickness() {
+  if (!outline || !outlineHost) return;
+  
+  // Remove old outline
+  outlineHost.remove(outline);
+  
+  // Create new outline with updated thickness
+  outline = createThickOutline(outlineHost, selectionThickness);
+  outlineHost.add(outline);
+}
 
-    camera.near = size/100;
-    camera.far  = size*10;
-    camera.position.copy(center).add(new THREE.Vector3(0, size*0.1, size*1.5));
-    camera.updateProjectionMatrix();
-    controls.update();
+/* ───────────────── GLB load ───────────────────────── */
+new GLTFLoader().load('model.glb',gltf=>{
+  const root=gltf.scene; scene.add(root);
 
-    /* ──────────────────────────────────────────
-     * Resize & centre the key-light’s shadow cam
-     * ───────────────────────────────────────── */
-    const sc     = keyLight.shadow.camera;
-    const extent = size * 0.6;          // half-width/height of square frustum
-    sc.left   = -extent;
-    sc.right  =  extent;
-    sc.top    =  extent;
-    sc.bottom = -extent;
-    sc.near   = 0.1;
-    sc.far    = size * 4;
-    keyLight.position.set(center.x + 5, center.y + 10, center.z + 5); // follow model
-    sc.updateProjectionMatrix();
+  /* first pass: classify + collect construction names */
+  root.traverse(o=>{
+    if(!o.isMesh) return;
 
-    /* uncomment to visualise the shadow frustum */
-    // scene.add(new THREE.CameraHelper(sc));
+    (isShade(o) ? shades : (stories[storyName(o)]??=[])).push(o);
 
-    /* ──────────────────────────────────────────
-     * Ground plane for shadows
-     * ───────────────────────────────────────── */
-    const groundSize = 400;                                        // change if you like
-    const groundGeo  = new THREE.PlaneGeometry(groundSize, groundSize);
-    const groundMat  = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.9});
-    const ground     = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI/2;
-    ground.position.set(center.x, box.min.y - 0.01, center.z);
-    ground.receiveShadow = true;
-    scene.add(ground);
+    const cn=o.userData?.constructionName||o.material?.name||'unknown';
+    palette[cn]??=nextColour();
 
-    animate();
-  }, undefined, err => console.error(err));
+    /* add thin grey edge overlay */
+    o.add(new THREE.LineSegments(
+      new THREE.EdgesGeometry(o.geometry,1),
+      new THREE.LineBasicMaterial({color:0x000000,opacity:0.33,transparent:true})
+    ));
+    o.material.polygonOffset=true; o.material.polygonOffsetFactor=1; o.material.polygonOffsetUnits=1;
+    o.castShadow=o.receiveShadow=true;
+  });
 
-  /* ────────────────────────────────────────────
-   * Render loop
-   * ─────────────────────────────────────────── */
-  function animate(){
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
+  /* second pass: apply colors and force opacity for all surfaces */
+  root.traverse(o=>{
+    if(!o.isMesh) return;
+
+    const cn=o.userData?.constructionName||o.material?.name||'unknown';
+    const col=palette[cn];
+    
+    if(col){
+      // Create a completely new material to avoid any transparency issues
+      const mat = new THREE.MeshStandardMaterial({
+        color: col,
+        transparent: false,
+        opacity: 1.0,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+      });
+      
+      o.material = mat;
+    }
+  });
+
+  /* create legend */
+  for(const [cn,col] of Object.entries(palette)){
+    const row=document.createElement('div');
+    row.innerHTML=`<span class="swatch" style="background:${col.getStyle()}"></span>${cn}`;
+    legend.appendChild(row);
   }
 
-  /* ────────────────────────────────────────────
-   * Resize handler
-   * ─────────────────────────────────────────── */
-  addEventListener('resize', () => {
-    camera.aspect = innerWidth/innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
+  /* story UI */
+  Object.keys(stories).sort().forEach(s=>{
+    const lab=document.createElement('label'); lab.className='item';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=true;
+    cb.onchange=()=>stories[s].forEach(m=>m.visible=cb.checked);
+    lab.appendChild(cb); lab.appendChild(document.createTextNode(s));
+    storyDiv.appendChild(lab);
   });
+
+  /* shade UI */
+  if(shades.length){
+    const lab=document.createElement('label'); lab.className='item';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=true;
+    cb.onchange=()=>shades.forEach(m=>m.visible=cb.checked);
+    lab.appendChild(cb); lab.appendChild(document.createTextNode('Shades'));
+    shadeDiv.appendChild(lab);
+  }else shadeDiv.style.display='none';
+
+  /* frame camera */
+  const box=new THREE.Box3().setFromObject(root);
+  const size=box.getSize(new THREE.Vector3()).length(), ctr=box.getCenter(new THREE.Vector3());
+  controls.target.copy(ctr);
+  camera.near=size/100; camera.far=size*10;
+  camera.position.copy(ctr).add(new THREE.Vector3(0,size*0.1,size*1.5));
+  camera.updateProjectionMatrix(); controls.update();
+
+  Object.assign(L.key.shadow.camera,{left:-size*0.6,right:size*0.6,top:size*0.6,bottom:-size*0.6,near:0.1,far:size*4});
+  L.key.shadow.camera.updateProjectionMatrix();
+  L.key.position.set(ctr.x+5,ctr.y+10,ctr.z+5);
+
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.9}));
+  ground.rotation.x=-Math.PI/2; ground.position.set(ctr.x,box.min.y-0.01,ctr.z); ground.receiveShadow=true; scene.add(ground);
+
+  animate();
+});
+
+/* ───────────────── lighting toggle ───────────────── */
+function lightsOn (){renderer.shadowMap.enabled=true;L.key.castShadow=true;L.key.intensity=1.3;L.fill.intensity=0.7;L.rim.intensity=0.5;L.amb.intensity=0.55;}
+function lightsOff(){renderer.shadowMap.enabled=false;L.key.castShadow=false;L.key.intensity=0;   L.fill.intensity=0;   L.rim.intensity=0;   L.amb.intensity=1.2;}
+let shadows=true; lightsOn();
+document.getElementById('shadowBtn').onclick=()=>{
+  shadows=!shadows; shadows?lightsOn():lightsOff();
+  document.getElementById('shadowBtn').textContent=`Shadows: ${shadows?'ON':'OFF'}`;
+};
+
+/* ───────────────── picking ───────────────────────── */
+renderer.domElement.addEventListener('contextmenu',e=>{
+  e.preventDefault();
+  mouse.x=(e.clientX/innerWidth)*2-1;
+  mouse.y=-(e.clientY/innerHeight)*2+1;
+  ray.setFromCamera(mouse,camera);
+
+  const hit=ray.intersectObjects(scene.children,true).find(h=>h.object.isMesh && h.object.visible);
+  if(!hit){ clearOutline(); return; }
+
+  const mesh=hit.object;
+  const cn=mesh.userData?.constructionName||mesh.material?.name||'unknown';
+  info.textContent=`Construction name: ${cn}`; info.style.display='block';
+
+  if(outlineHost!==mesh){
+    clearOutline();
+    outlineHost=mesh;
+    outline = createThickOutline(mesh, selectionThickness);
+    mesh.add(outline);
+  }
+});
+
+function clearOutline(){
+  info.style.display='none';
+  if(outlineHost && outline){ outlineHost.remove(outline); }
+  outlineHost=outline=null;
+}
+
+/* ───────────────── loop & resize ─────────────────── */
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 </script>
 </body></html>
