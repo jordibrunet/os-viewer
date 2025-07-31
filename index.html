@@ -1,32 +1,63 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>OpenStudio → glTF viewer (v8-h)</title>
-
+  <title>OpenStudio → glTF viewer (v10 – fixed Surface colours)</title>
+  <!-- Fonts & basic styling -->
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;700&display=swap" rel="stylesheet">
   <style>
     html,body{margin:0;height:100%}
     body{font-family:"Open Sans",sans-serif;font-weight:300}
     canvas{display:block}
-
-    #shadowBtn{position:fixed;left:12px;bottom:12px;z-index:12;padding:6px 12px;border:none;border-radius:6px;background:#555;color:#fff;font-size:14px;cursor:pointer}
-    #thicknessControl{position:fixed;left:12px;bottom:60px;z-index:12;background:#ffffffcc;border-radius:6px;padding:8px 12px;font-size:13px;box-shadow:0 2px 6px #0003}
+    /* ─── UI widgets ─── */
+    #shadowToggle{font-family:"Open Sans",sans-serif;font-weight:400;font-size:13px;color:#000}
+#shadowBtn{border:none;cursor:pointer;width:48px;height:24px;padding:0 4px;border-radius:24px;display:flex;align-items:center;justify-content:flex-start;transition:background .25s ease}
+#shadowBtn::before{content:"";display:block;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .25s ease}
+#shadowBtn.on{background:#0074D9}
+#shadowBtn.on::before{transform:translateX(24px)}
+#shadowBtn.off{background:#dae2ea}
+#shadowBtn.off::before{transform:translateX(0)}
+/* ── fix alignment & style */
+#shadowToggle{font-weight:400}
+#shadowBtn::before{width:16px;height:16px}
+#shadowBtn.on::before{transform:translateX(24px)}
+#shadowBtn::before{content:"";display:block;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .25s ease}
+#shadowBtn.on{background:#0074D9;color:#fff}
+#shadowBtn.on::before{transform:translateX(52px)}
+#shadowBtn.off{background:#dae2ea;color:#7a8087}
+#shadowBtn.off::before{transform:translateX(0)}
+    #thicknessControl{display:none}
     #info{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:#ffffffe8;border-radius:6px;padding:4px 10px;font-size:14px;box-shadow:0 2px 6px #0003;z-index:12;display:none}
-
-    #storyPanel,#shadePanel{position:fixed;left:12px;max-width:220px;max-height:40vh;overflow-y:auto;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.4;box-shadow:0 2px 6px #0003}
+    #storyPanel,#shadePanel,#spacePanel{position:fixed;left:12px;max-width:220px;max-height:30vh;overflow-y:auto;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.4;box-shadow:0 2px 6px #0003}
     #storyPanel{top:12px;z-index:10}
-    #shadePanel{top:calc(12px + 45vh);z-index:9}
-
-    #legend{position:fixed;top:12px;right:12px;max-width:260px;max-height:90vh;overflow-y:auto;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.4;box-shadow:0 2px 6px #0003;z-index:11}
-
+    #shadePanel{top:calc(12px + 32vh);z-index:9}
+    #spacePanel{top:calc(12px + 65vh);z-index:8}
+    /* color‑mode chooser */
+    #colorModePanel{position:fixed;top:12px;right:12px;z-index:12;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;box-shadow:0 2px 6px #0003;font-family:"Open Sans",sans-serif}
+    #colorModePanel select,#colorModePanel option{font-family:"Open Sans",sans-serif}
+    #legend{position:fixed;top:72px;right:12px;max-width:260px;max-height:82vh;overflow-y:auto;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.4;box-shadow:0 2px 6px #0003;z-index:11}
+    /* ─── Logo ─── */
+    #logo{position:fixed;right:12px;bottom:12px;width:170px;z-index:12;pointer-events:none;object-fit:contain}
+    /* misc */
     h3{margin:0 0 6px;font-weight:700;font-size:14px}
     .swatch{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:middle}
     .item{display:flex;align-items:center;margin-bottom:4px}
     .item input{margin-right:6px}
     .thickness-control{display:flex;align-items:center;gap:8px}
     .thickness-control input[type="range"]{width:100px}
+    /* Wireframe toggle styling to match shadow toggle */
+    #wireframeToggle{font-family:"Open Sans",sans-serif;font-weight:400;font-size:13px;color:#000}
+    /* Sun position controls */
+    #sunPositionPanel{position:fixed;left:12px;bottom:100px;z-index:12;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;box-shadow:0 2px 6px #0003;font-family:"Open Sans",sans-serif}
+    .sun-control{margin-bottom:6px}
+    .sun-control label{display:inline-block;width:80px}
+    .sun-control input{width:100px}
+    /* Coordinate system toggle */
+    #coordToggle{font-family:"Open Sans",sans-serif;font-weight:400;font-size:13px;color:#000}
+    /* Error message styling */
+    #errorMessage{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#ffcccc;color:#990000;padding:20px;border-radius:8px;box-shadow:0 4px 8px rgba(0,0,0,0.2);z-index:1000;max-width:80%;text-align:center;display:none}
   </style>
-
+  <!-- Three.js import map -->
   <script type="importmap">
   {
     "imports": {
@@ -37,8 +68,37 @@
   </script>
 </head>
 <body>
-<button id="shadowBtn">Shadows: ON</button>
-<div id="thicknessControl">
+<!-- UI controls -->
+<!-- Shadow checkbox with label -->
+<label id="shadowToggle" class="item" style="position:fixed;left:12px;bottom:200px;z-index:12;">
+  <input type="checkbox" id="shadowChk" checked>
+  Activate sun
+</label>
+<!-- Wireframe checkbox for hidden elements -->
+<label id="wireframeToggle" class="item" style="position:fixed;left:12px;bottom:20px;z-index:12;">
+  <input type="checkbox" id="wireframeHidden">
+  Show hidden as wireframe
+</label>
+<!-- Coordinate system toggle -->
+<label id="coordToggle" class="item" style="position:fixed;left:12px;bottom:45px;z-index:12;">
+  <input type="checkbox" id="coordChk" checked>
+  Show coordinate system
+</label>
+<!-- Sun position controls -->
+<div id="sunPositionPanel">
+  <h3>Sun position</h3>
+  <div class="sun-control">
+    <label>Hour:</label>
+    <input type="range" id="hourSlider" min="0" max="23" value="12" step="1">
+    <span id="hourValue">12</span>
+  </div>
+  <div class="sun-control">
+    <label>Day:</label>
+    <input type="range" id="daySlider" min="1" max="365" value="172" step="1">
+    <span id="dayValue">172</span>
+  </div>
+</div>
+<div id="thicknessControl">>>
   <div class="thickness-control">
     <label>Selection Thickness:</label>
     <input type="range" id="thicknessSlider" min="1" max="10" value="3" step="0.5">
@@ -47,262 +107,660 @@
 </div>
 <div id="info"></div>
 <div id="storyPanel"><h3>Stories</h3></div>
-<div id="shadePanel"><h3>Shading</h3></div>
-<div id="legend"><h3>Constructions</h3></div>
-
+<div id="shadePanel"><h3>Surface type</h3></div>
+<div id="spacePanel"><h3>Part of envelope</h3></div>
+<!-- Color‑mode chooser -->
+<div id="colorModePanel">
+  <label>Render by:
+    <select id="colorMode">
+      <option value="construction">Construction</option>
+      <option value="surface">Surface type</option>
+      <option value="envelope">Part of envelope</option>
+      <option value="story">Story</option>
+      <option value="boundary">Boundary condition</option>
+    </select>
+  </label>
+</div>
+<div id="legend"><h3>Legend</h3></div>
+<!-- Error message -->
+<div id="errorMessage"></div>
+<!-- LOGO -->
+<img id="logo" src="logo.png" alt="Logo" />
+<!-- MAIN SCRIPT -->
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader    } from 'three/addons/loaders/GLTFLoader.js';
-
-/* ───────────────── renderer ───────────────── */
-const renderer = new THREE.WebGLRenderer({antialias:true});
-renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping      = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
-renderer.physicallyCorrectLights = true;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
-
-/* ───────────────── scene / camera / controls ──────── */
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xe0e0e0);
-const camera  = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.01,10000);
-const controls= new OrbitControls(camera,renderer.domElement);
-controls.enableDamping = true;
-
-/* ───────────────── lights ─────────────────────────── */
-function studioLights(){
-  const key = new THREE.DirectionalLight(0xffffff,1.3);
-  key.position.set(5,10,5); key.castShadow=true;
-  key.shadow.mapSize.set(4096,4096); key.shadow.bias=-0.0005;
-
-  const fill=new THREE.DirectionalLight(0xffffff,0.7);
-  fill.position.set(-8,6,-4);
-
-  const rim =new THREE.DirectionalLight(0xffffff,0.5);
-  rim.position.set(0,10,-10);
-
-  const amb =new THREE.AmbientLight(0xffffff,0.55);
-
-  scene.add(key,fill,rim,amb);
-  return {key,fill,rim,amb};
+// Error display function
+function showError(message) {
+  const errorElement = document.getElementById('errorMessage');
+  errorElement.textContent = message;
+  errorElement.style.display = 'block';
+  console.error(message);
 }
-const L = studioLights();
-
-/* ───────────────── helpers ────────────────────────── */
-let hue=0; const nextColour=()=>new THREE.Color().setHSL((hue+=47)%360/360,0.55,0.5);
-function storyName(obj){
-  if(obj.userData?.buildingStoryName) return obj.userData.buildingStoryName;
-  for(let n=obj;n;n=n.parent){
-    const nm=n.name||''; if(nm.startsWith('BuildingStory:')) return nm.split(':').slice(1).join(':').trim();
+// Initialize with error handling
+try {
+  /* ───────────────── renderer ───────────────── */
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.5));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping      = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.physicallyCorrectLights = true;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+  document.body.appendChild(renderer.domElement);
+  /* ───────────────── scene / camera / controls ──────── */
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xffffff);
+  const camera  = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.01,10000);
+  const controls= new OrbitControls(camera,renderer.domElement);
+  controls.enableDamping = true;
+  /* ───────────────── lights ─────────────────────────── */
+  function studioLights(){
+    const key = new THREE.DirectionalLight(0xffffff,1.3); key.position.set(5,10,5); key.castShadow=true; key.shadow.mapSize.set(4096,4096); key.shadow.bias=-0.0005;
+    const fill=new THREE.DirectionalLight(0xffffff,0.7); fill.position.set(-8,6,-4);
+    const rim =new THREE.DirectionalLight(0xffffff,0.5); rim.position.set(0,10,-10);
+    const amb =new THREE.AmbientLight(0xffffff,0.55);
+    scene.add(key,fill,rim,amb);
+    return {key,fill,rim,amb};
   }
-  return 'Unknown';
-}
-const isShade=o=>o.userData?.shadingName||(o.name||'').startsWith('ShadingSurface');
-
-/* ───────────────── data & UI refs ─────────────────── */
-const palette={},stories={},shades=[];
-const info=document.getElementById('info');
-const storyDiv=document.getElementById('storyPanel');
-const shadeDiv=document.getElementById('shadePanel');
-const legend  =document.getElementById('legend');
-
-/* ───────────────── thickness control ─────────────── */
-const thicknessSlider = document.getElementById('thicknessSlider');
-const thicknessValue = document.getElementById('thicknessValue');
-let selectionThickness = parseFloat(thicknessSlider.value);
-
-thicknessSlider.addEventListener('input', (e) => {
-  selectionThickness = parseFloat(e.target.value);
-  thicknessValue.textContent = selectionThickness;
-  
-  // Update existing outline if present
-  if (outline && outlineHost) {
-    updateOutlineThickness();
+  const L = studioLights();
+  /* ───────────────── helpers ────────────────────────── */
+  let hue=0; const nextColour=()=>new THREE.Color().setHSL((hue+=37)%360/360,0.55,0.5);
+  function storyName(o){
+    if(o.userData?.buildingStoryName) return o.userData.buildingStoryName;
+    for(let n=o;n;n=n.parent){ const nm=n.name||''; if(nm.startsWith('BuildingStory:')) return nm.split(':').slice(1).join(':').trim(); }
+    return 'Unknown';
   }
-});
-
-/* ───────────────── picking vars ─────────────────── */
-const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
-let outline=null, outlineHost=null;
-
-/* ───────────────── outline creation with thickness ─────────── */
-function createThickOutline(mesh, thickness) {
-  // Create multiple concentric outlines for thickness effect
-  const outlineGroup = new THREE.Group();
+  function getSpaceName(o){
+    if(o.userData?.spaceName) return o.userData.spaceName;
+    if(o.name){
+      if(spaceAreaData[o.name]!==undefined) return o.name;
+      if(o.name.startsWith('Space:')){ const s=o.name.split(':').slice(1).join(':').trim(); if(spaceAreaData[s]!==undefined) return s; }
+      for(const token of o.name.split(':')) if(spaceAreaData[token.trim()]!==undefined) return token.trim();
+    }
+    for(let n=o.parent;n;n=n.parent){ const nm=n.name||''; if(spaceAreaData[nm]!==undefined) return nm; if(nm.startsWith('Space:')){ const s=nm.split(':').slice(1).join(':').trim(); if(spaceAreaData[s]!==undefined) return s; } }
+    return null;
+  }
+  const isShade=o=>o.userData?.shadingName||(o.name||'').startsWith('ShadingSurface');
+  /* ───────────────── fixed surface‑type colours ─────── */
+  const SURF_COLORS={
+    BuildingShading   : '#AD61E8',
+    FixedWindow       : '#61D8E8',
+    OverheadDoor      : '#8B4513',
+    Door              : '#E38042',
+    Skylight          : '#6195E8',
+    RoofCeiling       : '#D94C5F',
+    Wall              : '#D9C64C',
+    Floor             : '#B0A89D'
+  };
+  // colours for envelope visualisation
+  const INSIDE_COLOR  = new THREE.Color('#00549E');
+  const OUTSIDE_COLOR = new THREE.Color('#9E0054');
+  // colours for outside boundary visualisation
+  const ADIABATIC_COLOR  = new THREE.Color('#DE5BC7');
+  const OUTDOORS_COLOR = new THREE.Color('#3E62AB');
+  const SURFACE_COLOR = new THREE.Color('#2C9658');
+  const GROUND_COLOR = new THREE.Color('#D9B562');
+  const FOUNDATION_COLOR = new THREE.Color('#A656DB');
   
-  // Calculate a small offset based on mesh size
-  const bbox = new THREE.Box3().setFromObject(mesh);
-  const size = bbox.getSize(new THREE.Vector3()).length();
-  const baseOffset = size * 0.0001; // Very small base offset
-  
-  // Create multiple outline layers for thickness effect
-  const layers = Math.max(1, Math.floor(thickness));
-  
-  for (let i = 0; i < layers; i++) {
-    const offset = baseOffset * (i + 1) * (thickness / layers);
+  /* ───────────────── data containers ───────────────── */
+  let spaceAreaData={};
+  const paletteConst={},paletteSurf={},paletteStory={};
+  const stories={},shades=[],allMeshes=[];
+  const spacesInArea=[],spacesOutArea=[];
+  /* ───────────────── UI refs ───────────────── */
+  const storyPanel=document.getElementById('storyPanel');
+  const shadePanel=document.getElementById('shadePanel');
+  const spacePanel=document.getElementById('spacePanel');
+  const legend=document.getElementById('legend');
+  const colorModeSelect=document.getElementById('colorMode');
+  const infoBox=document.getElementById('info');
+  const wireframeHiddenCheckbox = document.getElementById('wireframeHidden');
+  const hourSlider = document.getElementById('hourSlider');
+  const daySlider = document.getElementById('daySlider');
+  const hourValue = document.getElementById('hourValue');
+  const dayValue = document.getElementById('dayValue');
+  const coordChk = document.getElementById('coordChk');
+  /* ───────────────── filter state ─────────────── */
+  const storyFilterState={};
+  const envelopeFilterState={in:true,out:true};
+  let shadeFilterState=true; // legacy, will be replaced by per‑type flags
+  // ─── surface‑type filters ───
+  const SURFACE_TYPES=['BuildingShading','FixedWindow','OverheadDoor','Door','Skylight','RoofCeiling','Wall','Floor'];
+  const surfaceFilterState={};
+  let colorMode='construction';
+  /* ───────────────── outline control ─────────── */
+  const thicknessSlider=document.getElementById('thicknessSlider');
+  const thicknessValue=document.getElementById('thicknessValue');
+  let selectionThickness=parseFloat(thicknessSlider.value);
+  thicknessSlider.addEventListener('input',e=>{ selectionThickness=parseFloat(e.target.value); thicknessValue.textContent=selectionThickness; updateOutlineThickness(); });
+  /* ───────────────── picking helpers ─────────── */
+  const ray=new THREE.Raycaster();
+  const mouse=new THREE.Vector2();
+  let outline=null,outlineHost=null;
+  function createThickOutline(mesh,th){
+    const g=new THREE.Group(); const size=new THREE.Box3().setFromObject(mesh).getSize(new THREE.Vector3()).length(); const base=size*0.0001; const layers=Math.max(1,Math.floor(th));
+    for(let i=0;i<layers;i++){ const geo=new THREE.EdgesGeometry(mesh.geometry,1); const mat=new THREE.LineBasicMaterial({color:0xff0000,transparent:true,opacity:0.8-i*0.1,depthTest:false}); const line=new THREE.LineSegments(geo,mat); line.scale.setScalar(1+base*(i+1)*(th/layers)); line.renderOrder=100000-i; g.add(line);} return g;
+  }
+  function updateOutlineThickness(){ if(outline&&outlineHost){ outlineHost.remove(outline); outline=createThickOutline(outlineHost,selectionThickness); outlineHost.add(outline);} }
+  function clearOutline(){ infoBox.style.display='none'; if(outlineHost&&outline) outlineHost.remove(outline); outline=outlineHost=null; }
+  /* ───────────────── sun position calculation ───────── */
+  function calculateSunPosition(day, hour) {
+    // Convert day of year to day angle (in radians)
+    const dayAngle = (2 * Math.PI * (day - 1)) / 365;
     
-    const wireframeGeometry = new THREE.EdgesGeometry(mesh.geometry, 1);
-    const wireframeMaterial = new THREE.LineBasicMaterial({
-      color: 0xff0000,
-      transparent: true,
-      opacity: 0.8 - (i * 0.1), // Fade outer layers slightly
-      depthTest: false,
-      depthWrite: false
+    // Solar declination (in radians)
+    const declination = 0.006918 - 0.399912 * Math.cos(dayAngle) + 
+                       0.070257 * Math.sin(dayAngle) - 0.006758 * Math.cos(2 * dayAngle) + 
+                       0.000907 * Math.sin(2 * dayAngle) - 0.002697 * Math.cos(3 * dayAngle) + 
+                       0.001480 * Math.sin(3 * dayAngle);
+    
+    // Hour angle (in radians)
+    const hourAngle = Math.PI * (hour - 12) / 12;
+    
+    // Solar zenith and azimuth angles (in radians)
+    const latitude = 40.0 * Math.PI / 180; // Default latitude (40 degrees North)
+    const zenith = Math.acos(Math.sin(latitude) * Math.sin(declination) + 
+                            Math.cos(latitude) * Math.cos(declination) * Math.cos(hourAngle));
+    const azimuth = Math.atan2(
+      -Math.sin(hourAngle),
+      Math.tan(declination) * Math.cos(latitude) - Math.sin(latitude) * Math.cos(hourAngle)
+    );
+    
+    // Convert spherical to Cartesian coordinates
+    const distance = 100; // Distance from origin
+    const x = distance * Math.sin(zenith) * Math.sin(azimuth);
+    const y = distance * Math.cos(zenith);
+    const z = distance * Math.sin(zenith) * Math.cos(azimuth);
+    
+    return new THREE.Vector3(x, y, z);
+  }
+  function updateSunPosition() {
+    const hour = parseInt(hourSlider.value);
+    const day = parseInt(daySlider.value);
+    
+    // Update display values
+    hourValue.textContent = hour;
+    dayValue.textContent = day;
+    
+    // Only update lighting if shadows are enabled
+    if (shadows) {
+      // Calculate sun position
+      const sunPosition = calculateSunPosition(day, hour);
+      
+      // Update key light position
+      L.key.position.copy(sunPosition);
+      
+      // Adjust light intensity based on time of day
+      // Brightest at noon, dimmer at sunrise/sunset
+      const normalizedHour = Math.abs(hour - 12) / 12; // 0 at noon, 1 at midnight
+      const intensity = 1.3 - (normalizedHour * 0.8); // Range from 1.3 to 0.5
+      L.key.intensity = Math.max(0.5, intensity);
+      
+      // Adjust ambient light based on time of day
+      const ambientIntensity = 0.55 - (normalizedHour * 0.35); // Range from 0.55 to 0.2
+      L.amb.intensity = Math.max(0.2, ambientIntensity);
+    }
+  }
+  /* ───────────────── coordinate system creation ───── */
+  let coordinateSystem = null;
+  let northArrow = null;
+function createCoordinateSystem(origin, size, northAxisAngle) {
+    // Create a group for the coordinate system
+    const group = new THREE.Group();
+   
+    // Length of the axes
+    const axisLength = size * 0.2;
+   
+    // Helper function to create a line
+    function createAxisLine(direction, color) {
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+            origin,
+            new THREE.Vector3().addVectors(origin, direction.multiplyScalar(axisLength))
+        ]);
+        const material = new THREE.LineBasicMaterial({ color: color });
+        return new THREE.Line(geometry, material);
+    }
+   
+    // Create axes with OpenStudio conventions:
+    // X-axis: flipped 180 degrees (point in opposite direction)
+    // Y and Z axes: swapped (Y becomes Z, Z becomes Y)
+    const xAxis = createAxisLine(
+        new THREE.Vector3(1, 0, 0),  // X flipped (negative direction)
+        0xff0000 // Red
+    );
+   
+    const yAxis = createAxisLine(
+        new THREE.Vector3(0, 0, -1),  // Original Z becomes Y
+        0x00ff00 // Green
+    );
+   
+    const zAxis = createAxisLine(
+        new THREE.Vector3(0, 1, 0),  // Original Y becomes Z
+        0x0000ff // Blue
+    );
+   
+    // Create north line (in the XZ plane with Y as up)
+    // North is defined as rotation from original Y (now Z axis)
+    const angleRad = THREE.MathUtils.degToRad(northAxisAngle);
+    const northDirection = new THREE.Vector3(
+        Math.sin(angleRad),  // X component (flipped for OpenStudio convention)
+        0,                    // Y component (up)
+        -Math.cos(angleRad)     // Z component (north)
+    );
+   
+    const northLine = createAxisLine(
+        northDirection,
+        0xffa500 // Orange
+    );
+    // Add all lines to the group
+    group.add(xAxis);
+    group.add(yAxis);
+    group.add(zAxis);
+    group.add(northLine);
+    
+    return group;
+}
+  function updateCoordinateSystemVisibility() {
+    if (coordinateSystem) {
+      coordinateSystem.visible = coordChk.checked;
+    }
+  }
+  /* ───────────────── legend & color helpers ────────── */
+  function applyColors(){
+    // Boundary condition mode
+    if (colorMode === 'boundary') {
+      allMeshes.forEach(m => {
+        // Special case: BuildingShading elements should be light grey in boundary mode
+        if (isShade(m)) {
+          m.material.color.set(0xcccccc); // Light grey
+        } else {
+          const boundary = m.userData?.outsideBoundaryCondition || 'unknown';
+          
+          // Apply specific colors for each boundary condition type
+          switch(boundary.toLowerCase()) {
+            case 'adiabatic':
+              m.material.color.set(ADIABATIC_COLOR);
+              break;
+            case 'outdoors':
+              m.material.color.set(OUTDOORS_COLOR);
+              break;
+            case 'surface':
+              m.material.color.set(SURFACE_COLOR);
+              break;
+            case 'ground':
+              m.material.color.set(GROUND_COLOR);
+              break;
+            case 'foundation':
+              m.material.color.set(FOUNDATION_COLOR);
+              break;
+            default:
+              m.material.color.set(0x777777); // Default grey for unknown
+          }
+        }
+      });
+      rebuildLegend();
+      return;
+    }
+    
+    // Envelope mode
+    if (colorMode === 'envelope'){
+      allMeshes.forEach(m=>{
+        // Special case: BuildingShading elements should be light grey in envelope mode
+        if (isShade(m)) {
+          m.material.color.set(0xcccccc); // Light grey
+        } else {
+          const col = inSet?.has(m) ? INSIDE_COLOR
+                   : outSet?.has(m) ? OUTSIDE_COLOR
+                   : new THREE.Color(0x777777);
+          m.material.color.copy(col);
+        }
+      });
+      rebuildLegend();
+      return;
+    }
+    
+    // Story mode
+    if (colorMode === 'story'){
+      allMeshes.forEach(m=>{
+        // Special case: BuildingShading elements should be light grey in story mode
+        if (isShade(m)) {
+          m.material.color.set(0xcccccc); // Light grey
+        } else {
+          const lbl = storyName(m);
+          m.material.color.copy(paletteStory[lbl] || new THREE.Color(0x777777));
+        }
+      });
+      rebuildLegend();
+      return;
+    }
+    
+    // Construction / Surface modes
+    const map = colorMode === 'construction' ? paletteConst : paletteSurf;
+    allMeshes.forEach(m=>{
+      const key = colorMode === 'construction'
+        ? (m.userData?.constructionName || m.material?.name || 'unknown')
+        : (m.userData?.surfaceType || 'unknown');
+      m.material.color.copy(map[key] || new THREE.Color(0x777777));
+    });
+    rebuildLegend();
+  }
+  function rebuildLegend(){
+    if(colorMode==='envelope'){
+      legend.innerHTML='<h3>Part of envelope</h3>';
+      legend.innerHTML+=`<div><span class='swatch' style='background:${INSIDE_COLOR.getStyle()}'></span>Yes</div>`;
+      legend.innerHTML+=`<div><span class='swatch' style='background:${OUTSIDE_COLOR.getStyle()}'></span>No</div>`;
+      return;
+    }
+    if(colorMode==='story'){
+      legend.innerHTML='<h3>Story</h3>';
+      Object.keys(paletteStory)
+        .filter(k=>k!=='Unknown')
+        .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))
+        .forEach(k=>{
+          const c=paletteStory[k];
+          const row=document.createElement('div');
+          row.innerHTML=`<span class='swatch' style='background:${c.getStyle()}'></span>${k}`;
+          legend.appendChild(row);
+        });
+      return;
+    }
+    if(colorMode==='boundary'){
+      legend.innerHTML='<h3>Boundary condition</h3>';
+      // Add boundary condition types to legend (excluding shading surfaces)
+      legend.innerHTML+=`<div><span class='swatch' style='background:${ADIABATIC_COLOR.getStyle()}'></span>Adiabatic</div>`;
+      legend.innerHTML+=`<div><span class='swatch' style='background:${OUTDOORS_COLOR.getStyle()}'></span>Outdoors</div>`;
+      legend.innerHTML+=`<div><span class='swatch' style='background:${SURFACE_COLOR.getStyle()}'></span>Surface</div>`;
+      legend.innerHTML+=`<div><span class='swatch' style='background:${GROUND_COLOR.getStyle()}'></span>Ground</div>`;
+      legend.innerHTML+=`<div><span class='swatch' style='background:${FOUNDATION_COLOR.getStyle()}'></span>Foundation</div>`;
+      return;
+    }
+    legend.innerHTML=`<h3>${colorMode==='construction'?'Construction':'Surface type'}</h3>`;
+    const map=colorMode==='construction'?paletteConst:paletteSurf;
+    Object.entries(map).forEach(([k,c])=>{
+      const row=document.createElement('div');
+      row.innerHTML=`<span class='swatch' style='background:${c.getStyle()}'></span>${k}`;
+      legend.appendChild(row);
+    });
+  }
+  colorModeSelect.addEventListener('change',()=>{ colorMode=colorModeSelect.value; applyColors(); });
+  wireframeHiddenCheckbox.addEventListener('change', updateVisibility);
+  hourSlider.addEventListener('input', updateSunPosition);
+  daySlider.addEventListener('input', updateSunPosition);
+  coordChk.addEventListener('change', updateCoordinateSystemVisibility);
+  /* ───────────────── visibility resolver ───────────── */
+  let inSet,outSet;
+  function updateVisibility(){
+    const wireframeHidden = wireframeHiddenCheckbox.checked;
+    
+    shades.forEach(m=>{
+      const st = m.userData?.surfaceType || 'unknown';
+      const typeOk = surfaceFilterState[st] ?? true;
+      if (!typeOk) {
+        if (wireframeHidden) {
+          m.visible = true;
+          // Create or update wireframe edges
+          if (!m.wireframeEdges) {
+            const edges = new THREE.EdgesGeometry(m.geometry, 1);
+            const lineMaterial = new THREE.LineBasicMaterial({ 
+              color: 0x000000, // Black color
+              linewidth: 0.1,
+              transparent: true,
+              opacity: 0.33,
+              depthTest: false
+            });
+            m.wireframeEdges = new THREE.LineSegments(edges, lineMaterial);
+            m.add(m.wireframeEdges);
+          }
+          m.wireframeEdges.visible = true;
+          m.material.visible = false; // Hide the original material
+        } else {
+          m.visible = false;
+          if (m.wireframeEdges) m.wireframeEdges.visible = false;
+        }
+      } else {
+        m.visible = true;
+        m.material.visible = true;
+        if (m.wireframeEdges) m.wireframeEdges.visible = false;
+      }
     });
     
-    const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
-    wireframe.renderOrder = 100000 - i;
-    wireframe.scale.setScalar(1 + offset);
-    
-    outlineGroup.add(wireframe);
-  }
-  
-  return outlineGroup;
-}
-
-function updateOutlineThickness() {
-  if (!outline || !outlineHost) return;
-  
-  // Remove old outline
-  outlineHost.remove(outline);
-  
-  // Create new outline with updated thickness
-  outline = createThickOutline(outlineHost, selectionThickness);
-  outlineHost.add(outline);
-}
-
-/* ───────────────── GLB load ───────────────────────── */
-new GLTFLoader().load('model.glb',gltf=>{
-  const root=gltf.scene; scene.add(root);
-
-  /* first pass: classify + collect construction names */
-  root.traverse(o=>{
-    if(!o.isMesh) return;
-
-    (isShade(o) ? shades : (stories[storyName(o)]??=[])).push(o);
-
-    const cn=o.userData?.constructionName||o.material?.name||'unknown';
-    palette[cn]??=nextColour();
-
-    /* add thin grey edge overlay */
-    o.add(new THREE.LineSegments(
-      new THREE.EdgesGeometry(o.geometry,1),
-      new THREE.LineBasicMaterial({color:0x000000,opacity:0.33,transparent:true})
-    ));
-    o.material.polygonOffset=true; o.material.polygonOffsetFactor=1; o.material.polygonOffsetUnits=1;
-    o.castShadow=o.receiveShadow=true;
-  });
-
-  /* second pass: apply colors and force opacity for all surfaces */
-  root.traverse(o=>{
-    if(!o.isMesh) return;
-
-    const cn=o.userData?.constructionName||o.material?.name||'unknown';
-    const col=palette[cn];
-    
-    if(col){
-      // Create a completely new material to avoid any transparency issues
-      const mat = new THREE.MeshStandardMaterial({
-        color: col,
-        transparent: false,
-        opacity: 1.0,
-        side: THREE.DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: 1,
-        polygonOffsetUnits: 1
+    for(const [s,list] of Object.entries(stories)){
+      const storyOn=storyFilterState[s];
+      list.forEach(m=>{
+        let v=storyOn;
+        if(inSet.has(m))      v=v&&envelopeFilterState.in;
+        else if(outSet.has(m))v=v&&envelopeFilterState.out;
+        const st=m.userData?.surfaceType||'unknown';
+        const typeOk=surfaceFilterState[st] ?? true;
+        const shouldBeVisible = v && typeOk;
+        
+        if (!shouldBeVisible) {
+          if (wireframeHidden) {
+            m.visible = true;
+            // Create or update wireframe edges
+            if (!m.wireframeEdges) {
+              const edges = new THREE.EdgesGeometry(m.geometry, 1);
+              const lineMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x000000, // Black color
+                linewidth: 0.1,
+                transparent: true,
+                opacity: 0.1,
+                depthTest: false
+              });
+              m.wireframeEdges = new THREE.LineSegments(edges, lineMaterial);
+              m.add(m.wireframeEdges);
+            }
+            m.wireframeEdges.visible = true;
+            m.material.visible = false; // Hide the original material
+          } else {
+            m.visible = false;
+            if (m.wireframeEdges) m.wireframeEdges.visible = false;
+          }
+        } else {
+          m.visible = true;
+          m.material.visible = true;
+          if (m.wireframeEdges) m.wireframeEdges.visible = false;
+        }
       });
-      
-      o.material = mat;
     }
-  });
-
-  /* create legend */
-  for(const [cn,col] of Object.entries(palette)){
-    const row=document.createElement('div');
-    row.innerHTML=`<span class="swatch" style="background:${col.getStyle()}"></span>${cn}`;
-    legend.appendChild(row);
   }
-
-  /* story UI */
-  Object.keys(stories).sort().forEach(s=>{
-    const lab=document.createElement('label'); lab.className='item';
-    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=true;
-    cb.onchange=()=>stories[s].forEach(m=>m.visible=cb.checked);
-    lab.appendChild(cb); lab.appendChild(document.createTextNode(s));
-    storyDiv.appendChild(lab);
-  });
-
-  /* shade UI */
-  if(shades.length){
-    const lab=document.createElement('label'); lab.className='item';
-    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=true;
-    cb.onchange=()=>shades.forEach(m=>m.visible=cb.checked);
-    lab.appendChild(cb); lab.appendChild(document.createTextNode('Shades'));
-    shadeDiv.appendChild(lab);
-  }else shadeDiv.style.display='none';
-
-  /* frame camera */
-  const box=new THREE.Box3().setFromObject(root);
-  const size=box.getSize(new THREE.Vector3()).length(), ctr=box.getCenter(new THREE.Vector3());
-  controls.target.copy(ctr);
-  camera.near=size/100; camera.far=size*10;
-  camera.position.copy(ctr).add(new THREE.Vector3(0,size*0.1,size*1.5));
-  camera.updateProjectionMatrix(); controls.update();
-
-  Object.assign(L.key.shadow.camera,{left:-size*0.6,right:size*0.6,top:size*0.6,bottom:-size*0.6,near:0.1,far:size*4});
-  L.key.shadow.camera.updateProjectionMatrix();
-  L.key.position.set(ctr.x+5,ctr.y+10,ctr.z+5);
-
-  const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.9}));
-  ground.rotation.x=-Math.PI/2; ground.position.set(ctr.x,box.min.y-0.01,ctr.z); ground.receiveShadow=true; scene.add(ground);
-
-  animate();
-});
-
-/* ───────────────── lighting toggle ───────────────── */
-function lightsOn (){renderer.shadowMap.enabled=true;L.key.castShadow=true;L.key.intensity=1.3;L.fill.intensity=0.7;L.rim.intensity=0.5;L.amb.intensity=0.55;}
-function lightsOff(){renderer.shadowMap.enabled=false;L.key.castShadow=false;L.key.intensity=0;   L.fill.intensity=0;   L.rim.intensity=0;   L.amb.intensity=1.2;}
-let shadows=true; lightsOn();
-document.getElementById('shadowBtn').onclick=()=>{
-  shadows=!shadows; shadows?lightsOn():lightsOff();
-  document.getElementById('shadowBtn').textContent=`Shadows: ${shadows?'ON':'OFF'}`;
-};
-
-/* ───────────────── picking ───────────────────────── */
-renderer.domElement.addEventListener('contextmenu',e=>{
-  e.preventDefault();
-  mouse.x=(e.clientX/innerWidth)*2-1;
-  mouse.y=-(e.clientY/innerHeight)*2+1;
-  ray.setFromCamera(mouse,camera);
-
-  const hit=ray.intersectObjects(scene.children,true).find(h=>h.object.isMesh && h.object.visible);
-  if(!hit){ clearOutline(); return; }
-
-  const mesh=hit.object;
-  const cn=mesh.userData?.constructionName||mesh.material?.name||'unknown';
-  info.textContent=`Construction name: ${cn}`; info.style.display='block';
-
-  if(outlineHost!==mesh){
-    clearOutline();
-    outlineHost=mesh;
-    outline = createThickOutline(mesh, selectionThickness);
-    mesh.add(outline);
+  /* ───────────────── load CSV envelope flags ───────── */
+  async function loadSpaceData(){
+    try {
+      console.log("Attempting to load CSV file...");
+      const response = await fetch('model_spaces.csv');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const txt = await response.text();
+      console.log("CSV file loaded successfully");
+      txt.trim().split('\n').slice(1).forEach(l => { 
+        const [nm,val]=l.split(','); 
+        if (nm) spaceAreaData[nm.trim()]=(val||'').trim().toLowerCase()==='true'; 
+      });
+    } catch (error) {
+      console.error('Error loading space data:', error);
+      showError(`Error loading space data: ${error.message}. Make sure model_spaces.csv is in the same directory as this HTML file.`);
+      // Continue without CSV data
+    }
   }
-});
+  /* ───────────────── model load ────────────────────── */
+  async function loadModel(){
+    try {
+      console.log("Starting model loading process...");
+      await loadSpaceData();
+      console.log("Space data loaded, now loading GLB model...");
+      
+      const loader = new GLTFLoader();
+      
+      loader.load(
+        'model.glb',
+        (gltf) => {
+          console.log("GLB model loaded successfully");
+          const root=gltf.scene; scene.add(root);
+          
+          // Find northAxis object and extract the angle
+          let northAxisAngle = 0; // Default if not found
+          root.traverse(o => {
+            if (o.userData && o.userData.northAxis !== undefined) {
+              northAxisAngle = parseFloat(o.userData.northAxis);
+              console.log("Found northAxis angle:", northAxisAngle);
+            }
+          });
+          
+          root.traverse(o=>{
+            if(!o.isMesh) return;
+            allMeshes.push(o);
+            const shade=isShade(o);
+            if(shade) shades.push(o); else (stories[storyName(o)]??=[]).push(o);
+            const sp=getSpaceName(o);
+            if(sp){ (spaceAreaData[sp]?spacesInArea:spacesOutArea).push(o); }
+            // palette keys
+            const cn=o.userData?.constructionName||o.material?.name||'unknown';
+            const st=o.userData?.surfaceType||'unknown';
+            const storyLabel=storyName(o);
+            paletteConst[cn]=paletteConst[cn]||nextColour();
+            if(!paletteSurf[st]) paletteSurf[st]=new THREE.Color(SURF_COLORS[st]||nextColour());
+            if(!paletteStory[storyLabel]) paletteStory[storyLabel]=nextColour();
+            if(!paletteSurf[st]){
+              paletteSurf[st]=new THREE.Color(SURF_COLORS[st]||nextColour());
+            }
+            // assign material (initially construction colour)
+            o.material=new THREE.MeshStandardMaterial({color:paletteConst[cn],side:THREE.DoubleSide});
+            // edge helper
+            const edges=new THREE.EdgesGeometry(o.geometry,1);
+            o.add(new THREE.LineSegments(edges,new THREE.LineBasicMaterial({color:0x000000,opacity:0.33,transparent:true})));
+            o.castShadow=o.receiveShadow=true;
+            o.material.polygonOffset=true; o.material.polygonOffsetFactor=1; o.material.polygonOffsetUnits=1;
+          });
+          
+          // build UI checkboxes
+          Object.keys(stories).sort().forEach(s=>{
+            storyFilterState[s]=true;
+            const lab=document.createElement('label'); lab.className='item';
+            const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=true;
+            cb.addEventListener('change',()=>{ storyFilterState[s]=cb.checked; updateVisibility(); });
+            lab.append(cb,document.createTextNode(s)); storyPanel.appendChild(lab);
+          });
+          
+          // build Surface‑type checkboxes
+          SURFACE_TYPES.forEach(t=>{
+            surfaceFilterState[t]=true;
+            const lab=document.createElement('label');lab.className='item';
+            const cb=document.createElement('input');cb.type='checkbox';cb.checked=true;
+            cb.addEventListener('change',()=>{ surfaceFilterState[t]=cb.checked; updateVisibility(); });
+            lab.append(cb,document.createTextNode(t)); shadePanel.appendChild(lab);
+          });
+          
+          const inLab=document.createElement('label'); inLab.className='item';
+          const inCb=document.createElement('input'); inCb.type='checkbox'; inCb.checked=true;
+          inCb.addEventListener('change',()=>{ envelopeFilterState.in=inCb.checked; updateVisibility(); });
+          inLab.append(inCb,document.createTextNode(`Yes (${spacesInArea.length})`)); spacePanel.appendChild(inLab);
+          
+          const outLab=document.createElement('label'); outLab.className='item';
+          const outCb=document.createElement('input'); outCb.type='checkbox'; outCb.checked=true;
+          outCb.addEventListener('change',()=>{ envelopeFilterState.out=outCb.checked; updateVisibility(); });
+          outLab.append(outCb,document.createTextNode(`No (${spacesOutArea.length})`)); spacePanel.appendChild(outLab);
+          
+          inSet=new Set(spacesInArea); outSet=new Set(spacesOutArea);
+          applyColors();
+          updateVisibility();
+          
+          // frame camera and ground
+          const box=new THREE.Box3().setFromObject(root);
+          const size=box.getSize(new THREE.Vector3()).length();
+          const ctr=box.getCenter(new THREE.Vector3());
+          
+          // Use actual 0,0,0 origin instead of model center
+          const origin = new THREE.Vector3(0, 0, 0);
+          
+          // Position camera relative to origin but offset to see the model
+          controls.target.copy(origin);
+          camera.near=size/100; camera.far=size*10;
+          camera.position.copy(origin).add(new THREE.Vector3(0,size*0.1,size*1.5)); camera.updateProjectionMatrix();
+          Object.assign(L.key.shadow.camera,{left:-size*0.6,right:size*0.6,top:size*0.6,bottom:-size*0.6,near:0.1,far:size*4}); L.key.shadow.camera.updateProjectionMatrix();
+          L.key.position.set(origin.x+5,origin.y+10,origin.z+5);
+          
+          const ground=new THREE.Mesh(new THREE.PlaneGeometry(600,600),new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.4}));
+          ground.rotation.x=-Math.PI/2; ground.position.set(origin.x, -0.15, origin.z); ground.receiveShadow=true; scene.add(ground);
 
-function clearOutline(){
-  info.style.display='none';
-  if(outlineHost && outline){ outlineHost.remove(outline); }
-  outlineHost=outline=null;
+          // const gridHelper = new THREE.GridHelper(600,600,0xFAFAFA,0xFAFAFA);
+          // gridHelper.position.set(origin.x,-0.15,origin.z);
+          // scene.add(gridHelper);
+
+          // Create coordinate system with north arrow using OpenStudio conventions at true origin
+          coordinateSystem = createCoordinateSystem(origin, size, northAxisAngle);
+          scene.add(coordinateSystem);
+          
+          // Initialize sun position
+          updateSunPosition();
+          animate();
+        },
+        (xhr) => {
+          console.log(`Loading model: ${(xhr.loaded / xhr.total * 100)}% loaded`);
+        },
+        (error) => {
+          console.error('Error loading GLB model:', error);
+          showError(`Error loading model: ${error.message}. Make sure model.glb is in the same directory as this HTML file.`);
+        }
+      );
+    } catch (error) {
+      console.error('Error in loadModel function:', error);
+      showError(`Error initializing model: ${error.message}`);
+    }
+  }
+  /* ───────────────── lighting toggle ──────────────── */
+  function lightsOn(){ 
+    renderer.shadowMap.enabled=true; 
+    L.key.castShadow=true; 
+    updateSunPosition(); // This will update the lighting when shadows are turned on
+  }
+  function lightsOff(){ 
+    renderer.shadowMap.enabled=false; 
+    L.key.castShadow=false; 
+    // Reset to default lighting when shadows are off
+    L.key.intensity=0.2;
+    L.fill.intensity=0.2;
+    L.rim.intensity=0.70; 
+    L.amb.intensity=1.2; 
+  }
+  let shadows=true; lightsOn();
+  const shadowChk = document.getElementById('shadowChk');
+  shadows = shadowChk.checked;           // initial state
+  shadowChk.addEventListener('change', () => {
+    shadows = shadowChk.checked;
+    shadows ? lightsOn() : lightsOff();
+  });
+  /* ───────────────── context‑menu picking ─────────── */
+  renderer.domElement.addEventListener('contextmenu',e=>{
+    e.preventDefault(); mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1; ray.setFromCamera(mouse,camera);
+    const hit=ray.intersectObjects(scene.children,true).find(h=>h.object.isMesh&&h.object.visible);
+    if(!hit){ clearOutline(); return; }
+    const mesh=hit.object; const cn=mesh.userData?.constructionName||mesh.material?.name||'unknown'; const sp=getSpaceName(mesh);
+    let txt=`Construction: <b>${cn}</b>`;
+    if(sp){ txt+=` | Space: <b>${sp}</b>`; if(spaceAreaData[sp]!==undefined){ txt+=` | Part Of Envelope: <b>${spaceAreaData[sp]?'Yes':'No'}</b>`; } }
+    // Add boundary condition to info text if available
+    if(mesh.userData?.outsideBoundaryCondition) {
+      txt+=` | Boundary: <b>${mesh.userData.outsideBoundaryCondition}</b>`;
+    }
+    infoBox.innerHTML=txt; infoBox.style.display='block';
+    if(outlineHost!==mesh){ clearOutline(); outlineHost=mesh; outline=createThickOutline(outlineHost,selectionThickness); mesh.add(outline); }
+  });
+  /* ───────────────── loop & resize ──────────────── */
+  function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene,camera);} 
+  window.addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+  
+  /* ───────────────── bootstrap ───────────────────── */
+  console.log("Starting application...");
+  loadModel();
+} catch (error) {
+  console.error('Fatal error during initialization:', error);
+  showError(`Fatal error: ${error.message}. Please check the browser console for more details.`);
 }
-
-/* ───────────────── loop & resize ─────────────────── */
-function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);}
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 </script>
-</body></html>
+</body>
+</html>
