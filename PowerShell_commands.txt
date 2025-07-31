@@ -1,8 +1,0 @@
-PS C:\> cd "C:\Users\JordiBrunetGarcia\Desktop\os_viewer"
-PS C:\Users\JordiBrunetGarcia\Desktop\os_viewer> & "C:\openstudio-3.9.0\bin\openstudio.exe" osm_to_glb.rb test.osm model.glb
-✅  Wrote model.glb
-
-PS C:\Users\JordiBrunetGarcia\Desktop\os_viewer> python -m http.server
-Serving HTTP on :: port 8000 (http://[::]:8000/) ...
-
-# then browse to http://localhost:8000/viewer.html
