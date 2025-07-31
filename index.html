@@ -27,7 +27,8 @@
 #shadowBtn.off{background:#dae2ea;color:#7a8087}
 #shadowBtn.off::before{transform:translateX(0)}
     #thicknessControl{display:none}
-    #info{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);background:#ffffffe8;border-radius:6px;padding:4px 10px;font-size:14px;box-shadow:0 2px 6px #0003;z-index:12;display:none}
+    #info{position:fixed;left:50%;top:12px;transform:translateX(-50%);background:#ffffffe8;border-radius:6px;padding:4px 10px;font-size:14px;box-shadow:0 2px 6px #0003;z-index:12;display:none}
+    #info b {font-weight: 700 !important;} /* Add this new rule */
     #storyPanel,#shadePanel,#spacePanel{position:fixed;left:12px;max-width:220px;max-height:30vh;overflow-y:auto;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.4;box-shadow:0 2px 6px #0003}
     #storyPanel{top:12px;z-index:10}
     #shadePanel{top:calc(12px + 32vh);z-index:9}
@@ -186,7 +187,9 @@ try {
     return null;
   }
   const isShade=o=>o.userData?.shadingName||(o.name||'').startsWith('ShadingSurface');
-  /* ───────────────── fixed surface‑type colours ─────── */
+  
+  /* ───────────────── colors ─────── */
+  // colors for surface type visualisation
   const SURF_COLORS={
     BuildingShading   : '#AD61E8',
     FixedWindow       : '#61D8E8',
@@ -197,10 +200,12 @@ try {
     Wall              : '#D9C64C',
     Floor             : '#B0A89D'
   };
-  // colours for envelope visualisation
-  const INSIDE_COLOR  = new THREE.Color('#00549E');
-  const OUTSIDE_COLOR = new THREE.Color('#9E0054');
-  // colours for outside boundary visualisation
+  
+  // colors for part of envelope visualisation
+  const INSIDE_COLOR  = new THREE.Color('#99ff99');
+  const OUTSIDE_COLOR = new THREE.Color('#ffb3b3');
+  
+  // colors for boundary visualisation
   const ADIABATIC_COLOR  = new THREE.Color('#DE5BC7');
   const OUTDOORS_COLOR = new THREE.Color('#3E62AB');
   const SURFACE_COLOR = new THREE.Color('#2C9658');
@@ -742,8 +747,7 @@ function createCoordinateSystem(origin, size, northAxisAngle) {
     const hit=ray.intersectObjects(scene.children,true).find(h=>h.object.isMesh&&h.object.visible);
     if(!hit){ clearOutline(); return; }
     const mesh=hit.object; const cn=mesh.userData?.constructionName||mesh.material?.name||'unknown'; const sp=getSpaceName(mesh);
-    let txt=`Construction: <b>${cn}</b>`;
-    if(sp){ txt+=` | Space: <b>${sp}</b>`; if(spaceAreaData[sp]!==undefined){ txt+=` | Part of envelope: <b>${spaceAreaData[sp]?'Yes':'No'}</b>`; } }
+    let txt=`Construction: <b>${cn}</b>`;if(sp){ txt+=` | Space: <b>${sp}</b>`; if(spaceAreaData[sp]!==undefined){ txt+=` | Part of envelope: <b>${spaceAreaData[sp]?'Yes':'No'}</b>`; } }
     // Add boundary condition to info text if available
     if(mesh.userData?.outsideBoundaryCondition) {
       txt+=` | Boundary: <b>${mesh.userData.outsideBoundaryCondition}</b>`;
