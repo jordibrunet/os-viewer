@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>SUNO OS:glTF viewer</title>
+  <title>Mosaik OS:glTF viewer</title>
   <!-- Fonts & basic styling -->
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;700&display=swap" rel="stylesheet">
   <style>
@@ -37,7 +37,7 @@
     #colorModePanel select,#colorModePanel option{font-family:"Open Sans",sans-serif}
     #legend{position:fixed;top:72px;right:12px;max-width:260px;max-height:82vh;overflow-y:auto;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;line-height:1.4;box-shadow:0 2px 6px #0003;z-index:11}
     /* ─── Logo ─── */
-    #logo{position:fixed;right:12px;bottom:12px;width:170px;z-index:12;pointer-events:none;object-fit:contain}
+    #logo{position:fixed;right:12px;bottom:35px;width:320px;z-index:12;pointer-events:none;object-fit:contain}
     /* misc */
     h3{margin:0 0 6px;font-weight:700;font-size:14px}
     .swatch{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:middle}
@@ -48,7 +48,7 @@
     /* Wireframe toggle styling to match shadow toggle */
     #wireframeToggle{font-family:"Open Sans",sans-serif;font-weight:400;font-size:13px;color:#000}
     /* Sun position controls */
-    #sunPositionPanel{position:fixed;left:12px;bottom:90px;z-index:12;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;box-shadow:0 2px 6px #0003;font-family:"Open Sans",sans-serif}
+    #sunPositionPanel{position:fixed;left:220px;bottom:25px;z-index:12;background:#ffffffcc;border-radius:8px;padding:8px 12px;font-size:13px;box-shadow:0 2px 6px #0003;font-family:"Open Sans",sans-serif}
     .sun-control{margin-bottom:6px}
     .sun-control label{display:inline-block;width:80px}
     .sun-control input{width:100px}
@@ -70,7 +70,7 @@
 <body>
 <!-- UI controls -->
 <!-- Shadow checkbox with label -->
-<label id="shadowToggle" class="item" style="position:fixed;left:12px;bottom:200px;z-index:12;">
+<label id="shadowToggle" class="item" style="position:fixed;left:12px;bottom:70px;z-index:12;">
   <input type="checkbox" id="shadowChk" checked>
   Activate sun
 </label>
@@ -126,6 +126,7 @@
 <div id="errorMessage"></div>
 <!-- LOGO -->
 <img id="logo" src="logo.png" alt="Logo" />
+<div id="sentence" style="position:fixed;right:12px;bottom:20px;width:900px;z-index:12;pointer-events:none;text-align:right;font-family:'Open Sans',sans-serif;font-size:13px;color:#555;">Som una cooperativa de segon grau, impulsada per SUNO Enginyeria i Eclekte Coop, que presta serveis UBEM</div>
 <!-- MAIN SCRIPT -->
 <script type="module">
 import * as THREE from 'three';
