@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>OpenStudio → glTF viewer (v10 – fixed Surface colours)</title>
+  <title>SUNO OS:glTF viewer</title>
   <!-- Fonts & basic styling -->
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;700&display=swap" rel="stylesheet">
   <style>
@@ -117,7 +117,7 @@
       <option value="surface">Surface type</option>
       <option value="envelope">Part of envelope</option>
       <option value="story">Story</option>
-      <option value="boundary">Boundary condition</option>
+      <option value="boundary">Boundary</option>
     </select>
   </label>
 </div>
@@ -469,7 +469,7 @@ function createCoordinateSystem(origin, size, northAxisAngle) {
       return;
     }
     if(colorMode==='boundary'){
-      legend.innerHTML='<h3>Boundary condition</h3>';
+      legend.innerHTML='<h3>Boundary</h3>';
       // Add boundary condition types to legend (excluding shading surfaces)
       legend.innerHTML+=`<div><span class='swatch' style='background:${ADIABATIC_COLOR.getStyle()}'></span>Adiabatic</div>`;
       legend.innerHTML+=`<div><span class='swatch' style='background:${OUTDOORS_COLOR.getStyle()}'></span>Outdoors</div>`;
@@ -742,7 +742,7 @@ function createCoordinateSystem(origin, size, northAxisAngle) {
     if(!hit){ clearOutline(); return; }
     const mesh=hit.object; const cn=mesh.userData?.constructionName||mesh.material?.name||'unknown'; const sp=getSpaceName(mesh);
     let txt=`Construction: <b>${cn}</b>`;
-    if(sp){ txt+=` | Space: <b>${sp}</b>`; if(spaceAreaData[sp]!==undefined){ txt+=` | Part Of Envelope: <b>${spaceAreaData[sp]?'Yes':'No'}</b>`; } }
+    if(sp){ txt+=` | Space: <b>${sp}</b>`; if(spaceAreaData[sp]!==undefined){ txt+=` | Part of envelope: <b>${spaceAreaData[sp]?'Yes':'No'}</b>`; } }
     // Add boundary condition to info text if available
     if(mesh.userData?.outsideBoundaryCondition) {
       txt+=` | Boundary: <b>${mesh.userData.outsideBoundaryCondition}</b>`;
