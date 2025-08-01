@@ -21,7 +21,7 @@ P03_T1_Espai_Compl_Ob_2,true
 P01_T1_Aula_Inf_1,true
 P02_T1_Esc_CE_2,true
 P01_T1_Aula_Inf_2,true
-P02_T1_Agora_central_1,true
+P02_T1_Agora_central_1,false
 P01_T1_Tutoria_Inf,true
 P01_T1_Aula_Inf_3,true
 P01_T1_Aula_Inf_4,true
@@ -62,10 +62,10 @@ P01_T2_Circ,true
 P01_T2_Biblioteca,true
 P02_T1_Esc_Tanc_3,true
 P01_T2_Wc_Alu_Adapt,true
-P02_T1_Agora_S_Ext_1,true
+P02_T1_Agora_S_Ext_1,false
 P02_T1_Aula_Prim_03,true
 P02_T1_Sala_Reunions_Ob_1,true
-P02_T1_Agora_S_Ext_2,true
+P02_T1_Agora_S_Ext_2,false
 P02_T1_Wc_Alu_2,true
 P02_T1_Distrib_1,true
 P02_T1_Aula_Prim_01,true
@@ -103,7 +103,7 @@ P03_T1_Aula_Desdobl_1,true
 P03_T1_Aula_Prim_10,true
 P03_T1_Wc_Alu_4,true
 P03_T1_Agora_Aules_4,true
-P03_T1_Agora_Central,true
+P03_T1_Agora_Central,false
 P03_T1_Esc_Tanc_1,true
 P04_T1_Aula_Sec_5,true
 P03_T1_Esc_Tanc_3,true
@@ -133,8 +133,8 @@ P04_T1_Wc_Alu_6,true
 P04_T1_Agora_Aules_6,true
 P04_T1_Esc_Tanc_3,true
 P04_T1_Aula_Sec_7,true
-P02_T1_Agora_central_2,true
-P04_T1_Agora_Central,true
+P02_T1_Agora_central_2,false
+P04_T1_Agora_Central,false
 P04_T2_Sala_Inst,false
 P05_T1_Espai_Res_Nucli_2,true
 P05_T1_Reserva_Inst_Escola_3,false
